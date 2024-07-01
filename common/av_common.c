@@ -96,13 +96,7 @@ AVCodecParameters *mp_codec_params_to_av(const struct mp_codec_params *c)
     avp->bit_rate = c->bitrate;
     avp->block_align = c->block_align;
 
-#if !HAVE_AV_CHANNEL_LAYOUT
-    avp->channels = c->channels.num;
-    if (!mp_chmap_is_unknown(&c->channels))
-        avp->channel_layout = mp_chmap_to_lavc(&c->channels);
-#else
     mp_chmap_to_av_layout(&avp->ch_layout, &c->channels);
-#endif
 
     return avp;
 error:
@@ -265,8 +259,20 @@ char **mp_get_lavf_demuxers(void)
         const AVInputFormat *cur = av_demuxer_iterate(&iter);
         if (!cur)
             break;
-        MP_TARRAY_APPEND(NULL, list, num, talloc_strdup(NULL, cur->name));
+        MP_TARRAY_APPEND(NULL, list, num, talloc_strdup(list, cur->name));
     }
+    MP_TARRAY_APPEND(NULL, list, num, NULL);
+    return list;
+}
+
+char **mp_get_lavf_protocols(void)
+{
+    char **list = NULL;
+    int num = 0;
+    void *opaque = NULL;
+    const char *name;
+    while ((name = avio_enum_protocols(&opaque, 0)))
+        MP_TARRAY_APPEND(NULL, list, num, talloc_strdup(list, name));
     MP_TARRAY_APPEND(NULL, list, num, NULL);
     return list;
 }

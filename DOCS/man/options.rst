@@ -146,7 +146,7 @@ Track Selection
 ``--subs-match-os-language=<yes|no>``
     When autoselecting a subtitle track, select the track that matches the language of your OS
     if the audio stream is in a different language if suitable (default track or a forced track
-    under the right conditions). Note that if ``-slang`` is set, this will be completely ignored
+    under the right conditions). Note that if ``--slang`` is set, this will be completely ignored
     (default: yes).
 
 ``--subs-fallback=<yes|default|no>``
@@ -2052,10 +2052,8 @@ Audio
     Audio delay in seconds (positive or negative float value). Positive values
     delay the audio, and negative values delay the video.
 
-``--mute=<yes|no|auto>``
+``--mute=<yes|no>``
     Set startup audio mute status (default: no).
-
-    ``auto`` is a deprecated possible value that is equivalent to ``no``.
 
     See also: ``--volume``.
 
@@ -2391,7 +2389,8 @@ Subtitles
     Whether to scale subtitles with the window size (default: yes). If this is
     disabled, changing the window size won't change the subtitle font size.
 
-    Like ``--sub-scale``, this can break ASS subtitles.
+    Affects plain text subtitles only (or ASS if ``--sub-ass-override`` is set
+    high enough).
 
 ``--sub-scale-with-window=<yes|no>``
     Make the subtitle font size relative to the window, instead of the video.
@@ -2500,7 +2499,7 @@ Subtitles
 
         Using this option may lead to incorrect subtitle rendering.
 
-``--sub-ass-override=<yes|no|force|scale|strip>``
+``--sub-ass-override=<no|yes|scale|force|strip>``
     Control whether user style overrides should be applied. Note that all of
     these overrides try to be somewhat smart about figuring out whether or not
     a subtitle is considered a "sign".
@@ -2509,17 +2508,17 @@ Subtitles
             overrides.
     :yes:   Apply all the ``--sub-ass-*`` style override options. Changing the
             default for any of these options can lead to incorrect subtitle
-            rendering (default).
+            rendering.
+    :scale: Like ``yes``, but also apply ``--sub-scale`` (default).
     :force: Like ``yes``, but also force all ``--sub-*`` options. Can break
             rendering easily.
-    :scale: Like ``yes``, but also apply ``--sub-scale``.
     :strip: Radically strip all ASS tags and styles from the subtitle. This
             is equivalent to the old ``--no-ass`` / ``--no-sub-ass`` options.
 
     This also controls some bitmap subtitle overrides, as well as HTML tags in
     formats like SRT, despite the name of the option.
 
-``--secondary-sub-ass-override=<yes|no|force|scale|strip>``
+``--secondary-sub-ass-override=<no|yes|scale|force|strip>``
     Control whether user secondary substyle overrides should be applied. This
     works exactly like ``--sub-ass-override``.
 
@@ -4138,6 +4137,12 @@ Input
     option is applied only during (lib)mpv initialization, and if disabled then it
     will not be not possible to enable them later. May be useful to libmpv clients.
 
+``--input-builtin-dragging=<yes|no>``
+    Enable the built-in window-dragging behavior (default: yes). Setting it to no
+    disables the built-in dragging behavior. Note that unlike the ``window-dragging``
+    option, this option only affects VOs which support the ``begin-vo-dragging``
+    command, and does not disable window dragging initialized with the command.
+
 ``--input-cmdlist``
     Prints all commands that can be bound to keys.
 
@@ -4235,8 +4240,7 @@ Input
 
 ``--input-cursor=<yes|no>``
     Permit mpv to receive pointer events reported by the video output
-    driver. Necessary to use the OSC, or to select the buttons in DVD menus.
-    Support depends on the VO in use.
+    driver. Necessary to use the OSC. Support depends on the VO in use.
 
 ``--input-cursor-passthrough=<yes|no>``
     Tell the backend windowing system to allow pointer events to passthrough
@@ -4302,6 +4306,11 @@ Input
     for the touch events (default: yes). This is useful for compatibility
     for mouse key bindings and scripts which read mouse positions for platforms
     which do not support ``--native-touch=no`` (e.g. Wayland).
+
+``--input-dragging-deadzone=<N>``
+    Begin the built-in window dragging when the mouse moves outside a deadzone of
+    ``N`` pixels while the mouse button is being held down (default: 3). This only
+    affects VOs which support the ``begin-vo-dragging`` command.
 
 OSD
 ---
@@ -4380,6 +4389,12 @@ OSD
 ``--osd-playing-msg-duration=<time>``
     Set the duration of ``osd-playing-msg`` in ms. If this is unset,
     ``osd-playing-msg`` stays on screen for the duration of ``osd-duration``.
+
+``--osd-playlist-entry=<title|filename|both>``
+    Whether to display the media title, filename, or both. If the
+    ``media-title`` is not available, it will display only the ``filename``.
+
+    Default: ``title``.
 
 ``--osd-bar-align-x=<-1-1>``
     Position of the OSD bar. -1 is far left, 0 is centered, 1 is far right.
@@ -4474,12 +4489,18 @@ OSD
     are always in actual pixels. The effect is that changing the window size
     won't change the OSD font size.
 
+    .. note::
+
+        For scripts which draw user interface elements, it is recommended to
+        respect the value of this option when deciding whether the elements
+        are scaled with window size or not.
+
 ``--osd-shadow-color=<color>``
     See ``--sub-color``. Color used for OSD shadow.
 
     .. note::
 
-        ignored when ``--osd-back-color`` is specified (or more exactly: when
+        Ignored when ``--osd-back-color`` is specified (or more exactly: when
         that option is not set to completely transparent).
 
 ``--osd-shadow-offset=<size>``
@@ -5693,6 +5714,33 @@ them.
     results, as can missing or incorrect display FPS information (see
     ``--display-fps-override``).
 
+``--egl-config-id=<ID>``
+    (EGL only)
+    Select EGLConfig with specific EGL_CONFIG_ID.
+    Rendering surfaces and contexts will be created using this EGLConfig.
+    You can use ``--msg-level=vo=trace`` to obtain a list of available configs.
+
+``--egl-output-format=<auto|rgb8|rgba8|rgb10|rgb10_a2|rgb16|rgba16|rgb16f|rgba16f|rgb32f|rgba32f>``
+    (EGL only)
+    Select a specific EGL output format to utilize for OpenGL rendering.
+    This option is mutually exclusive with ``--egl-config-id``.
+    "auto" is the default, which will pick the first usable config
+    based on the order given by the driver.
+
+    All formats are not available.
+    A fatal error is caused if an unavailable format is selected.
+
+    .. note::
+
+        There is no reliable API to query desktop bit depth in EGL.
+        You can manually set this option
+        according to the bit depth of your display.
+        This option also affects the auto-detection of ``--dither-depth``.
+
+    .. note::
+
+        Unlike  ``--d3d11-output-format``, this option also takes effect with ``--vo=gpu-next``.
+
 ``--vulkan-device=<device name|UUID>``
     The name or UUID of the Vulkan device to use for rendering and presentation. Use
     ``--vulkan-device=help`` to see the list of available devices and their
@@ -5872,6 +5920,11 @@ them.
 ``--wayland-edge-pixels-touch=<value>``
     Defines the size of an edge border (default: 32) to initiate client side
     resizes events in the wayland contexts with touch events.
+
+``--wayland-present=<yes|no>``
+    Enable the use of wayland's presentation time protocol for more accurate
+    frame presentation if it is supported by the compositor (default: ``yes``).
+    This only has an effect if ``--video-sync=display-...`` is being used.
 
 ``--spirv-compiler=<compiler>``
     Controls which compiler is used to translate GLSL to SPIR-V. This is
@@ -6431,6 +6484,11 @@ them.
     :system:   No manual syncing, depend on the layer mechanic and the next drawable
     :feedback: Same as precise but uses the presentation feedback core mechanism
 
+``--macos-menu-shortcuts=<yes|no>``
+    Enables the default menu bar shortcuts (default: yes). The menu bar shortcuts always take
+    precedence over any other shortcuts, they are not propagated to the mpv core and they can't be
+    used in config files like ``input.conf`` or script bindings.
+
 ``--android-surface-size=<WxH>``
     Set dimensions of the rendering surface used by the Android gpu context.
     Needs to be set by the embedding application if the dimensions change during
@@ -6446,6 +6504,9 @@ them.
     The value ``auto`` (the default) selects the GPU context with the default autoprobe
     order. You can also pass ``help`` to get a complete list of compiled in backends
     (sorted by the default autoprobe order).
+
+    Note that the default GPU context is subject to change, and must not be relied upon.
+    If a certain GPU context needs to be used, it must be explicitly specified.
 
     auto
         auto-select (default). Note that this context must be used alone and
@@ -6489,7 +6550,9 @@ them.
     Controls which type of graphics APIs will be accepted:
 
     auto
-        Use any available API (default)
+        Use any available API (default). Note that the default GPU API used for this
+        value is subject to change, and must not be relied upon. If a certain GPU API
+        needs to be used, it must be explicitly specified.
     opengl
         Allow only OpenGL (requires OpenGL 2.1+ or GLES 2.0+)
     vulkan
@@ -7114,10 +7177,10 @@ Miscellaneous
 -------------
 
 ``--display-tags=tag1,tags2,...``
-    Set the list of tags that should be displayed on the terminal. Tags that
-    are in the list, but are not present in the played file, will not be shown.
-    If a value ends with ``*``, all tags are matched by prefix (though there
-    is no general globbing). Just passing ``*`` essentially filtering.
+    Set the list of tags that should be displayed on the terminal and stats.
+    Tags that are in the list, but are not present in the played file, will not
+    be shown. If a value ends with ``*``, all tags are matched by prefix (though
+    there is no general globbing). Just passing ``*`` essentially filtering.
 
     The default includes a common list of tags, call mpv with ``--list-options``
     to see it.
